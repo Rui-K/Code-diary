@@ -8,9 +8,11 @@
 - **代码记录**
 - Markdown用法
 ### 插入图片
-![示例图片](./FILES/readme.md/微信图片_20211206171542.jpg =200x200)
-- 可以调整图片大小
+![示例图片](./FILES/readme.md/微信图片_20211206171542.jpg)
+- 这种代码不可以调整图片大小
 - 不可以调整图片位置
+<img src=./FILES/readme.md/微信图片_20211206171542.jpg width="100" alt="图片描述文字">
+- 这种可以调整大小，如果改变位置需要被< div >包围
 ### 代码记录
 - 短代码-->`print('Hello world')`
 - 代码块-->可以直接复制
@@ -30,8 +32,6 @@ print('Hello world')
 - 所有字符匹配需要满足空格和换行的条件
 #### 高级应用
 - 链接的使用
-  [软件代码源码git](https://github.com/purocean/yn)，注意需要http，直接手打www开头无法跳转
-  可以直接link关键词输入
-- 目录的使用
-  [toc]{type: "ul", level: [2,3,4]}
-  关键词toc
+  [软件代码源码git](https://github.com/purocean/yn)，注意需要http，直接手打www开头无法跳转,可以直接link关键词输入
+- 目录的使用,关键词toc
+  [toc]{type: "ul", level: [2,3,4]} 
