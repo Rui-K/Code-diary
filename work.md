@@ -5,7 +5,7 @@
 - 完成了yank note的安装使用，git仓库的管理，Markdown语言的相关设置
 - 进行了一部分pcl tutorials的阅读
 ### PCL tutorials
-- [ ]  Object Recognition based on Correspondence Grouping
+- [x] ~~2021-12-19 10:55~~  Object Recognition based on Correspondence Grouping
 模型是桌面上有milk盒子（存在download->Google里），预计实现分割和grouping功能？涉及到visualization没有跑，明天改一下代码看看效果。
 - Plane model segmentation
 必须整个模型是一个平面+离散点，单独应用意义不大，coefficients指代的ax+by+cz+d=0相关参数相对有意义。可以使用RANSAC。
@@ -27,3 +27,9 @@
     - pointcloud2的读取速度貌似比XYZ要快，不知道写出的时候是否可以用这一格式
 - [ ]  批量化操作, io文件目录方式待探索
 - [ ]  voxel方式全局统一变化，后续需要探索knn或者octree，争取保留局部特征变化，变换K值比radius更合适
+## 2021-12-19
+### PCL tutorials
+- Object Recognition based on Correspondence Grouping
+需要有模型的原型然后进行匹配，与主题内容不符合，后续不再考虑
+- Random Sample Consensus model 即RANSAC
+应用在单体上的ransac，是cylinder的前序程序
