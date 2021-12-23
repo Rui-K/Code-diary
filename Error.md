@@ -18,3 +18,21 @@ Centos真的坑，虽然是稳定版本，但是就个人使用而言系统不�
 既然不要远程的图形显示了，这个问题也不存在了，不要再试图安装了！
 ## 2021-12-18
 c++和Python不一样啊！！！！“；”很重要啊！！！不要再忘记了啊！！！
+## 2021-12-20
+- 之前换回gcc4.8.5的时候将9.4.0版本的c++和gcc完全抹除了……
+- 重装gcc-9.4.0, --prefix /usr/local/gcc，参考链接为 [Centos7安装指定版本gcc](https://www.codeleading.com/article/41615623197/)
+- /usr/bin目录下均已更换为9.4.0版本gcc, g++, c++, 但是pcl make报错找不到：`c++: fatal error: cannot execute ‘cc1plus’: execvp: No such file or directory`
+- 移动include文件夹，但是貌似只是移动没有激活
+- which g++ indicate /bin/g++, means not not correctly installed
+- 回退4.8.5，pcl编译成功，但是which g++仍然 /bin/g++
+- ~~硬替换方法失败，重回ls链接，参考 [linux（centos）--gcc高低版本切换](https://blog.csdn.net/chenpe32cp/article/details/89481601)~~
+- cmake update to 3.6.2, but ccmake became not found，导致pcl编译cmake失败！卸载cmake的时候把pcl依赖cmake文件也误删了……
+- 再一次感慨centos是TM垃圾啊！！！！！！！
+- 又找不到cc1plus了啊！！！！！！
+- 通过yum history undo，参考 [yum history](https://mlog.club/article/4253653) 恢复了pcl，莫名其妙又正常了……应该是和cc1plus没关系,不碰了，崩溃！
+## 2021-12-22
+### PCL编译问题
+- 重新安装了库需要把之前生成的cmakecache等文件删掉（直接删掉build）重新搞，不然永远无法解决问题，不会重新加载
+- 从源码编译比较适合centos，毕竟大部分包无法yum安装
+- 禁用不合适的、用不到的包有助于make
+- ccmake有助于进行详细configuration
