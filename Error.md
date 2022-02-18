@@ -36,3 +36,24 @@ c++和Python不一样啊！！！！“；”很重要啊！！！不要再忘�
 - 从源码编译比较适合centos，毕竟大部分包无法yum安装
 - 禁用不合适的、用不到的包有助于make
 - ccmake有助于进行详细configuration
+## 2021-12-25
+### 无法使用GPU问题解决
+- 问题报错 `Error: no kernel image is available for execution on the device`
+- 多方验证后确认是arch和code版本与此显卡算力(75)不符的原因，此处无法直观看见具体使用的架构，通过重回pcl进行cmake输出得到的信息，之前使用的是86算力框架
+- `pcl_find_cuda.cmake`文件不好更改，直接进入ccmake更改`CMAKE_CUDA_FLAGS`后重新编译
+- 根据 [NVIDIA](https://docs.nvidia.com/cuda/ampere-compatibility-guide/index.html#building-ampere-compatible-apps-using-cuda-10-0)在此处添加flags确定合适架构，两句**缺一不可**
+```
+-gencode=arch=compute_75,code=sm_75
+-gencode=arch=compute_75,code=compute_75
+```
+## 2022-02-17
+### 可视化桌面
+进入机房试图解决未果，主要尝试与问题有
+- Ctrl + Alt + F2进入命令行可以用命令行登录操作
+- 默认为init 5模式但是无效果
+- startx仅有home和trash
+- gnome-shell被kill，且无法启动
+### 试图直接连接有线网
+- eth0在本机名称为em1,其他一致
+- seu-wlan更新后更难破译自动登录
+- 此路不通

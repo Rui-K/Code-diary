@@ -85,3 +85,67 @@ pcl::gpu::printShortCudaDeviceInfo (device);
 - normal
 参考 [test_normals.cpp](https://github.com/PointCloudLibrary/pcl/blob/master/gpu/features/test/test_normals.cpp)
 都在pcl/gpu/features/test/目录下
+
+## 2021-12-24
+### 圆柱提取
+- GZB_3_Cloud_4.pcd有6个完整的柱子，较适合
+    - 不明原因有明显地面缺口，柱子不到顶，下半部分缺失一部分，完整提取后不知情况如何
+    - 另有混凝土横梁支撑和方形钢柱
+- 应先downsample，KNN较合适
+- extract_indices争取一个文件输出所有柱，但先试验单柱输出
+- [x] ~~2022-01-29 13:57~~ cylinder的seg模型不太一致，需要normal等参数，修好gpu尝试 
+### 使用GPU计算normal报错
+- `Error: no kernel image is available for execution on the device /home/kangrui/pcl/gpu/features/src/normal_3d.cu:249`
+- 可能与cuda版本与gpu计算能力不匹配，参考 [deviceQuery](https://www.cnblogs.com/wmr95/articles/8846749.html)查看 `CUDA Capability Major/Minor version number:    7.5`
+- nvcc架构问题参考 [nvcc的code、arch、gencode选项](https://zhengqm.github.io/blog/2018/12/07/cuda-nvcc-tips.html)
+- ~~也可能是CMakeLists.txt写的不对……~~ CMakeLists.txt没有问题，该找到的都找到了
+- 利用 [Pytorch](https://blog.csdn.net/weixin_30897079/article/details/96581542?spm=1001.2101.3001.6650.1&utm_medium=distribute.pc_relevant.none-task-blog-2%7Edefault%7ECTRLIST%7Edefault-1.nonecase&depth_1-utm_source=distribute.pc_relevant.none-task-blog-2%7Edefault%7ECTRLIST%7Edefault-1.nonecase)检查，Cuda正常使用无错误，只在PCL库发生，或许版本不兼容？
+- bug已解决，详见Error.（2021-12-25）,gpu真快……输入进去几秒钟就算完了……
+## 2021-12-25
+### 尝试运行其他gpu/example/seg
+- 代码并不是完整的，解决了一个`pcl::gpu::EuclideanClusterExtraction<pcl::PointXYZ> gec;`未指定数据类型问题
+- 出现cuda方面错误，但是暂时不影响normal使用，搁置
+```
+terminate called after throwing an instance of 'thrust::system::system_error'
+  what():  radix_sort: failed on 2nd step: cudaErrorInvalidConfiguration: invalid configuration argument
+Aborted (core dumped)
+```
+### cylinder尝试
+- 换一种normal方案
+## 2022-01-29
+### Normal 计算问题结果
+- gpu环境可以使用，但是upload和download问题非常多，且网上缺少有效指导，放弃
+- CPU多线程使用的OMP可以替代，速度非常快，要```#include <pcl/features/normal_3d_omp.h>```
+### Cylinder提取
+- normal计算在OMP后速度极快
+- cylinder的seg计算非常慢，单核单进程，寻求OMP解决方案（单个column计算速度几分钟，可以忍受）
+- 参考extract_indices时不仅要投入normal，还要考虑normal与剩余点数量不对应问题
+- seg无OMP提取一个柱子要2400s左右,现尝试omp---失败
+### OpenMP
+需要在CMakeLists里面添加如下代码
+```CMakeLists
+FIND_PACKAGE( OpenMP REQUIRED)
+
+if(OPENMP_FOUND)
+message("OPENMP FOUND")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
+endif()
+```
+## 2022-02-17
+### Cylinder提取
+#### 出现问题
+- 提取数量远多于实际柱数量，上面方形支撑被提取出来，其中一个先于柱子提取
+- 柱子周边圆形钢构件没有被提取出来
+#### 拟解决方案
+- 限制半径更严格
+- 根据方程参数直接筛掉不合格的半径柱
+- 对柱周边点tolerance提高
+## 2022-02-18
+### Cylinder改进
+1. `seg.setRadiusLimits (0.8, 1.2);`
+2. `seg.setDistanceThreshold (0.2);`
+3. 写出logfile记录coefficient，参考[菜鸟教程文件写入](https://www.runoob.com/cplusplus/cpp-files-streams.html)
+4. 无法从点的数量判断是否圆柱,只能看log里面对应参数是否有变化
+5. PointT换成PointXYZRGB,不使用downsampled文件
