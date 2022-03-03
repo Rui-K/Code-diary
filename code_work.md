@@ -1,4 +1,4 @@
-# 干了啥
+# code work timeline
 [toc]{type: "ul", level: [2,3]}
 
 ## 2021-12-17
@@ -25,8 +25,10 @@
     - pcd尺寸极大降低，但是与之伴随的是精度最大只能到1cm了，有得有失需要后续验证
     - 需要注意pcl读取的pcd文件的格式，voxel仅支持pointcloud2，随后经过转化为pointcloudXYZ输出的
     - pointcloud2的读取速度貌似比XYZ要快，不知道写出的时候是否可以用这一格式
-- [ ]  批量化操作, io文件目录方式待探索
-- [ ]  voxel方式全局统一变化，后续需要探索knn或者octree，争取保留局部特征变化，变换K值比radius更合适
+- [x] ~~2022-02-21 11:10~~  批量化操作, io文件目录方式待探索
+**无必要性**
+- [x] ~~2022-02-21 11:10~~  voxel方式全局统一变化，后续需要探索knn或者octree，争取保留局部特征变化，变换K值比radius更合适
+**无必要性**
 ## 2021-12-19
 ### PCL tutorials
 - Object Recognition based on Correspondence Grouping
@@ -149,3 +151,110 @@ endif()
 3. 写出logfile记录coefficient，参考[菜鸟教程文件写入](https://www.runoob.com/cplusplus/cpp-files-streams.html)
 4. 无法从点的数量判断是否圆柱,只能看log里面对应参数是否有变化
 5. PointT换成PointXYZRGB,不使用downsampled文件
+## 2022-02-19
+### downsample报错
+- `[pcl::VoxelGrid::applyFilter] Leaf size is too small for the input dataset. Integer indices would overflow.`随后未经降采样原数据输出
+- 参考解决方式 [Link](https://codeleading.com/article/49103838657/)
+#### downsample解决方式
+1. 尝试利用ExtractIndices分块储存cloud，参考 [indices](https://stackoverflow.com/questions/65463235/how-to-create-pclpointindices-from-stdvectorint-with-pclpoint-cloud-lib)
+2. c++的vector使用，参考 [菜鸟教程](https://www.runoob.com/w3cnote/cpp-vector-container-analysis.html) **WARNING！！** 必须使用.begin(),否则输入纯数字会变成另一种赋值的用法
+3. [在线c++](https://c.runoob.com/compile/12/)
+4. 稳定报错，pcl库bug，现放弃此方式留存思路代码
+```c++
+#include <iostream>
+#include <ctime>
+#include <pcl/ModelCoefficients.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/point_types.h>
+#include <pcl/sample_consensus/method_types.h>
+#include <pcl/sample_consensus/model_types.h>
+#include <pcl/segmentation/sac_segmentation.h>
+#include <pcl/filters/voxel_grid.h>
+#include <pcl/filters/extract_indices.h>
+#include<vector>
+
+using namespace std;
+typedef pcl::PointXYZRGB PointT;
+int main()
+{
+    pcl::PointCloud<PointT>::Ptr cloud(new pcl::PointCloud<PointT>), cloud_tmp(new pcl::PointCloud<PointT>), cloud_tmp_f(new pcl::PointCloud<PointT>),cloud_filtered (new pcl::PointCloud<PointT>);
+    pcl::PointIndices::Ptr ind (new pcl::PointIndices), ind_tmp (new pcl::PointIndices);
+    pcl::ExtractIndices<PointT> extract;
+
+    string filename = "/home/kangrui/Data/FP_point/GZB_3_Cloud_4";
+    clock_t start_t, end_t;
+    start_t=clock();
+    pcl::PCDReader reader;
+    if(reader.read(filename + ".pcd", *cloud) == -1){
+        PCL_ERROR ("Couldn't read file  \n");
+        return(-1);
+    }
+    end_t=clock();
+    cout << filename << "  Successfully Loaded" << endl
+                <<"Reading time: "<<(double)(end_t-start_t)/CLOCKS_PER_SEC << "s" << endl
+                <<"point cloud shape: "<< cloud->width * cloud->height
+                <<endl;
+
+    //seg cloud into small block
+    int nr_points = (int) cloud->size ();
+    vector<int> index, index_tmp;
+    for (int i=0; i<nr_points; i++){
+        //index.push_back(i);
+        ind->indices.push_back(i);
+    }
+    int K = 10000;
+    int B = (int) nr_points/K;
+    int start, end;
+    start = 0;
+    end = B -1 ;
+    //cerr << "B: " <<B<<endl;
+    pcl::VoxelGrid<PointT> sor;
+    sor.setLeafSize (0.01f, 0.01f, 0.01f);
+
+    for (int i = 0; i < K; ++i){
+        //cerr << "start = "<<start<<" end = "<<end<<endl;
+        //index_tmp.assign();
+        ind_tmp->indices.assign(ind->indices.begin()+start,ind->indices.begin()+end);
+        start = end;
+        end = end + B;
+        extract.setInputCloud (cloud);
+        extract.setIndices (ind_tmp);
+        extract.setNegative (false);
+        extract.filter (*cloud_tmp);
+        //downsample start
+        start_t = clock();
+        sor.setInputCloud (cloud_tmp);
+        sor.filter (*cloud_tmp_f);
+        end_t = clock();
+        cerr << "PointCloud block " <<i<<"-- original points: "<< cloud_tmp->size() << endl <<
+        "After filtering: " << cloud_tmp_f->size() << endl
+        <<"Time cost: "<<(double)(end_t-start_t)/CLOCKS_PER_SEC << "s" << endl<<endl;
+        //concatenate points 
+        *cloud_filtered += *cloud_tmp_f;
+    }
+
+    
+    
+    pcl::PCDWriter writer;
+    writer.write<PointT> (filename+"_RGB_downsampled.pcd", *cloud_filtered, false);
+    
+    return(0);
+}
+```
+### Cylinder针对未降采样3_4参数调整提取
+- 目前参数提取失败,未分清r和d,半径和直径的区别....改为0.4-0.6
+- 锁定半径放大误差阈值后 意外提取了横向支撑……
+- coefficients定义如下， [参数详解](https://blog.csdn.net/wokaowokaowokao12345/article/details/51457217)
+```
+point_on_axis.x : the X coordinate of a point located on the cylinder axis
+point_on_axis.y : the Y coordinate of a point located on the cylinder axis
+point_on_axis.z : the Z coordinate of a point located on the cylinder axis
+axis_direction.x : the X coordinate of the cylinder's axis direction
+axis_direction.y : the Y coordinate of the cylinder's axis direction
+axis_direction.z : the Z coordinate of the cylinder's axis direction
+radius : the cylinder's radius
+```
+
+### 其他部位提取方式
+- 意外提取，可后续持续改进加手动-->根据圆柱参数直接卡死
+- 基于颜色的region grow估计不行，颜色靠太近了，可以后续欧几里德聚类试一下,但是钢结构和支撑连在一起了
