@@ -258,3 +258,43 @@ radius : the cylinder's radius
 ### 其他部位提取方式
 - 意外提取，可后续持续改进加手动-->根据圆柱参数直接卡死
 - 基于颜色的region grow估计不行，颜色靠太近了，可以后续欧几里德聚类试一下,但是钢结构和支撑连在一起了
+
+## 2022-03-07
+### pointconv数据库建立
+#### pickle
+- 参考 [csdn-pickle](https://blog.csdn.net/coffee_cream/article/details/51754484)
+- 按顺序储存，按顺序读取，可以压缩
+- 原scannet_dataset
+```python
+    pickle_out = open("scannet_%s_rgb21c_pointid.pickle"%(split),"wb")
+    pickle.dump(scene_data, pickle_out, protocol=0)
+    pickle.dump(scene_data_labels, pickle_out, protocol=0)
+    pickle.dump(scene_data_id, pickle_out, protocol=0)
+    pickle.dump(scene_data_num, pickle_out, protocol=0)
+    pickle_out.close()
+```
+输出为
+```
+(77012, 6) [array([[5.3242141e-01, 4.5172734e+00, 2.6304942e-01, 1.0100000e+02,
+        1.0700000e+02, 9.0000000e+01],
+       [5.3404164e-01, 4.5520892e+00, 2.6230201e-01, 8.8000000e+01,
+        8.3000000e+01, 7.8000000e+01],
+       [5.4477900e-01, 4.4811263e+00, 1.7396316e-01, 3.9000000e+01,
+        3.9000000e+01, 3.5000000e+01],
+       ...,
+       [7.5318260e+00, 4.8856416e+00, 2.5779479e+00, 2.4200000e+02,
+        2.1200000e+02, 1.4400000e+02],
+       [7.5255036e+00, 4.9194841e+00, 2.6109233e+00, 1.7500000e+02,
+        1.6100000e+02, 1.2700000e+02],
+       [7.5323153e+00, 4.8880706e+00, 2.6260881e+00, 1.7900000e+02,
+        1.6400000e+02, 1.2800000e+02]], dtype=float32)]
+(77012,) [array([14., 14., 14., ...,  1.,  1.,  1.])]
+(77012,) [array([    0,     1,     2, ..., 81366, 81367, 81368])]
+[81368]#过滤了unlabelled数据，因此点数与实际使用的数据数不一致
+```
+- pickle储存的数据格式应为
+    - `data->list[array(n,xyzrgb)]`
+    - `data_label->list[array(n)]`
+    - `data_id->list[array(n)]`
+    - `point_num->list[num_before_remove]`
+- 代码完成，输出的为np.array，无list在外
