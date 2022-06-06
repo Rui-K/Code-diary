@@ -11,8 +11,10 @@ Centos真的坑，虽然是稳定版本，但是就个人使用而言系统不�
 - 由于校园网ip问题？或者其他原因，每次vscode登录之后转发的display需要重新设置。w查看ip后，export DISPLAY=ip:0.0重新设置即可。
 - GLX问题，open3d，PCL的visualization均不可用，不要再尝试了，就算能用那么大的文件打开也卡死了，浪费了整整2天解决这个问题，答案就是解决不了。
 - w查看连接的ip
+```
 export DISPLAY=10.203.236.15:0.0
 echo $DISPLAY确认
+```
 
 #### gcc版本与编译问题
 - 现在版本是4.8.5，一般情况下都够用，不够用降低要安装的包的版本，最好不要乱动了
@@ -89,3 +91,30 @@ c++和Python不一样啊！！！！“；”很重要啊！！！不要再忘�
 - 进行软连接，参考 [linux（centos）--gcc高低版本切换](https://blog.csdn.net/chenpe32cp/article/details/89481601)
 - 对应操作为`sudo ln -snf /usr/local/bin/c++-4.8.5/c++ /usr/bin/c++`，其他同
 - 失败！！！缺少cc1plus！切回
+
+## 2022-03-18
+### pointconv tf1.11环境配置报错
+`tensorflow.python.framework.errors_impl.NotFoundError: /home/kangrui/pointconv/tf_ops/3d_interpolation/tf_interpolate_so.so: undefined symbol: _ZN10tensorflow8internal21CheckOpMessageBuilder9NewStringEv`
+
+参考[git-issue评论](https://github.com/charlesq34/pointnet2/issues/48#issuecomment-608135179)找到未链接原因，但是连上之后又引发了其他问题，初步判断是gcc版本问题，多次安装gcc不同版本后原动态链接库应该还是4.8的旧版本的，现卸载conda安装的tf，转pip安装
+
+pip无法解决问题，且因cuda版本报错，转回conda，解决libc++版本不足问题，参考[博客园libstdc](https://segmentfault.com/a/1190000041012397),下载在Downloads里，已替换解决问题
+
+出现新的`tensorflow.python.framework.errors_impl.NotFoundError: /home/kangrui/pointconv/tf_ops/3d_interpolation/tf_interpolate_so.so: undefined symbol: _ZN10tensorflow7strings6StrCatERKNS0_8AlphaNumE`
+
+失败告终，回Pointnet2环境适配
+## 2022-03-28
+### git 22 port time out
+参考[github官方](https://docs.github.com/en/authentication/troubleshooting-ssh/using-ssh-over-the-https-port)
+
+## 2022-03-29
+### evaluate class 0 issue 
+- total_correct_class[0]一直为0，格构柱和圆柱的识别效果也不好，初步怀疑柱的label有问题
+- train、val的class 0均无问题
+- ` # batch_pred_label = np.argmax(pred_val[:, :, 1:], 2) + 1 #BxN why + 1??`scannet的class应该是从0开始的，去掉+1尝试
+- 最后两个数字都变成0了，而且数据非常差
+- pred_label全部+1，whole_scene_label从0开始没有变
+- 改回原来的形式，暂时舍弃class 0
+## 2022-03-30
+### open3d显示
+- 颜色只支持0-1,255的rgb要归一

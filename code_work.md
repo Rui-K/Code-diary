@@ -298,3 +298,96 @@ radius : the cylinder's radius
     - `data_id->list[array(n)]`
     - `point_num->list[num_before_remove]`
 - 代码完成，输出的为np.array，无list在外
+## 2022-03-18
+### 试运行
+- pickle读取时加了list在整体数据外
+- tf 1.11环境不一样，新建一个，[ERROR！](./Error.md#pointconv-tf1.11环境配置报错)
+- 自动换行 alt+z
+- 跑通了，用小一号的_s进行测试
+## 2022-03-19
+### 代码结构差异
+- 原代码的结构是一个room是一个pointset，送入多个room为一个batch
+- 需要改为小块送入，从数据准备这一块就开始变更，使用原码的小块`[array(),array()]`模式，**学习方块**
+### 代码拟调整方式
+- CLOI里面是1x1x1立方米方块，大范围场景拟用5x5x5
+- pickle已生成完毕
+### 开跑
+- batch< 8，否则挤爆无法运行
+## 2022-03-20
+### 500epoch结果
+- 结果不理想,eval才60多
+- 忘记在pickle里面把点数少的训练集删除
+- 再跑
+- screen查看屏幕输出`ctrl+a, ]`
+
+## 2022-03-23
+### BIMServer搭建
+- 已配置完成，参考[BIMServer入门](https://blog.brucekong.com/posts/3869274485/)
+- 插件已安装ifcopenshell等
+- 离线插件安装参考[opensourceBIM](https://github.com/opensourceBIM/BIMserver/wiki/Installing-without-internet-connection)
+- ifcengine无法安装，不要放入离线插件中
+
+## 2022-03-24
+### 排查evaluate计算IoU问题
+```
+        for l in range(NUM_CLASSES):
+            total_seen_class[l] += np.sum((whole_scene_label==l))
+            total_correct_class[l] += np.sum((pred_label==l) & (whole_scene_label==l))
+            total_iou_deno_class[l] += np.sum(((pred_label==l) | (whole_scene_label==l)) & (whole_scene_label > 0))
+
+
+        print(total_correct_class)
+        print(total_iou_deno_class)
+        print(total_seen_class)
+```
+输出结果为
+```
+visualize 33 40.ply ...
+[0, 0, 0, 0, 0, 0, 0, 0, 0]
+[0, 0, 0, 0, 0, 0, 0, 0, 0]
+[6325484, 0, 0, 0, 0, 0, 0, 0, 0]
+```
+但是根据实际输出标签的结果来看，训练和eval没有问题
+<img src=./FILES/code_work.md/1.png width="200" alt="predict">
+<img src=./FILES/code_work.md/2.png width="200" alt="ground truth">
+
+得到的IoU果然全部为0
+```
+eval point avg class IoU: 0.000000
+Each Class IoU:::
+Class 1 : 0.0000
+Class 2 : 0.0000
+Class 3 : 0.0000
+Class 4 : 0.0000
+Class 5 : 0.0000
+Class 6 : 0.0000
+Class 7 : 0.0000
+Class 8 : 0.0000
+```
+**数据集test在打包pickle的时候没有输入label！！！**
+
+dump2022_03_25_03_09_00包记录的为test数据集结果
+
+## 2022-03-30
+### RANSAC code
+- open3d用于可视化
+- [pyransac3d](https://pypi.org/project/pyransac3d/)用于进行形状提取
+- RANSAC取平面之后凸包取轮廓然后再取线
+
+## 2022-04-01
+### BoundaryEstimation
+- re边界估计半径、reforn法线估计半径均为0.3，角度阈值PI/4时很多边界没提取出来
+<img src=./FILES/code_work.md/3.png width="300" alt="boundary_1">
+- 切换kdtree search，re 0.15，reforn 30，PI/2。只是多了噪点，无有效边界提出。
+- [此链接](https://www.xuehua.tw/a/5ec91bfb868e1a463e4724f4)说Ksearch的值越大越好，下一次试一下，目前是50。--不理想，噪点多，但是也提取了一些有用的线。
+- 跑一次要50分钟
+#### 2022-04-02
+- 效果仍然不好，考虑拆分一个内支撑，一方面减少时间，另一方面看看能不能减少干扰
+### Plane extraction + BoundaryEstimation
+- 效果非常好！
+<img src=./FILES/code_work.md/4.png width="300" alt="boundary_2">
+- re=0.2; reforn=64; thresh 0.03，iteration 3500
+- BoundaryEstimation原理 [angle criterion](https://onlinelibrary.wiley.com/doi/10.1111/j.1467-8667.2012.00761.x)，没有找到最原始的，[pcl paper](https://ieeexplore.ieee.org/abstract/document/5980567)
+- 算法描述用第一篇文章，引用用pcl那篇
+### Line and shape
+>步骤(5)中生成建筑立面的方法为:首先统计出过滤后的激光点中Z坐标的最大值和最小值，分别为Zmax和Zmin，然后根据多线段P1P2......Pn的节点坐标和Zmax、Zmin值，得到多线段P1P2……Pn中任一线段PiPi+i的立面中的四个顶点的三维坐标，依次为(Xi，Yi，Zmin)、(Xi+i，Yi+i，Zmin)、(Xi+i, Yi+i,Zmax)(Xi, Yi,Zmax)，其中 I < i < n_l，根据四个顶点坐标，生成任一线段P1Pw的立面，按此循环直至生成多线段P1P2……立面。
